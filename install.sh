@@ -69,7 +69,7 @@ start_network_service() {
   echo "(c) cancel"
   read -p "> " yc
   case $ync in
-    [Yy]* ) start_network_systemd_service; exit;;
+    [Yy]* ) start_network_service; exit;;
     [Cc]* ) exit;;
     * ) echo " ";;
   esac
@@ -77,10 +77,29 @@ start_network_service() {
 
 }
 
+start_network_service() {
+  if [[ $1 == 'systemd' ]];
+  then
+    echo 'starting service systemctl'
+    start_network_systemd_service
+  elif [[ $1 == 'runit' ]];
+  then
+    echo 'starting with runit'
+    start_network_runit_service
+  else
+    echo $1 'is not handled. Aborting.'
+  fi
+
+}
 start_network_systemd_service() {
   systemctl start NetworkManager
   systemctl enable NetworkManager
 }
+
+start_network_runit_service() {
+  sv up NetworkManager
+}
+
 
 # TODO: Handle runit
 # start_network_runit_service() {
@@ -96,7 +115,8 @@ install_developtools() {
     echo "(n) don't install devops"
     read -p "> " ync
       case $ync in
-          [Yy]* ) sudo -u "$username" pacman  --noconfirm --needed -Sy $(< ./packages/devops.list); break;;
+          # [Yy]* ) sudo -u "$username" pacman  --noconfirm --needed -Sy $(< ./packages/devops.list); break;;
+          [Yy]* ) sudo pacman  --noconfirm --needed -Sy $(< ./packages/devops.list); break;;
           [Nn]* ) echo "Not installing devops"; break;;
           * ) echo " ";;
       esac
@@ -111,7 +131,8 @@ install_tools() {
     echo "(n) don't install tools"
     read -p "> " ync
       case $ync in
-          [Yy]* ) sudo -u "$username" pacman  --noconfirm --needed -Sy $(< ./packages/tools.list); break;;
+          # [Yy]* ) sudo -u "$username" pacman  --noconfirm --needed -Sy $(< ./packages/tools.list); break;;
+          [Yy]* ) sudo pacman  --noconfirm --needed -Sy $(< ./packages/tools.list); break;;
           [Nn]* ) echo "Not installing tools"; break;;
           * ) echo " ";;
       esac
@@ -126,7 +147,8 @@ install_productivity() {
     echo "(n) don't install productivity"
     read -p "> " ync
       case $ync in
-          [Yy]* ) sudo -u "$username" pacman  --noconfirm --needed -Sy $(< ./packages/productivity.list); break;;
+          # [Yy]* ) sudo -u "$username" pacman  --noconfirm --needed -Sy $(< ./packages/productivity.list); break;;
+          [Yy]* ) sudo pacman  --noconfirm --needed -Sy $(< ./packages/productivity.list); break;;
           [Nn]* ) echo "Not installing productivity"; break;;
           * ) echo " ";;
       esac
@@ -141,26 +163,46 @@ install_browsers() {
     echo "(n) don't install browsers"
     read -p "> " ync
       case $ync in
-          [Yy]* ) sudo -u "$username" pacman  --noconfirm --needed -Sy $(< ./packages/browsers.list); break;;
+          # [Yy]* ) sudo -u "$username" pacman  --noconfirm --needed -Sy $(< ./packages/browsers.list); break;;
+          [Yy]* ) sudo pacman  --noconfirm --needed -Sy $(< ./packages/browsers.list); break;;
           [Nn]* ) echo "Not installing browsers"; break;;
           * ) echo " ";;
       esac
   done
 }
 
-welcome
-set_nopasswd_wheel
-add_or_choose_user
+# 5) AUR packages.
+# TODO: This must not be run with sudo
+install_aur() {
+  current=$(pwd)
+  packages=$(cat ./packages/aur.list)
+  if [[ ! -z $packages ]];
+  then
+    cd /tmp
+    for package in $packages
+    do
+	echo "1) Cloning $package from AUR"
+	git clone https://aur.archlinux.org/$package.git
+	cd $package
+	makepkg -si
+	cd ..
+	rm -rdf $package
+    done
+    cd $current
+  else
+    echo 'Nothing do do Yay!.'
+  fi
+	  
+}
+
+# install_aur
+# welcome
+# set_nopasswd_wheel
+# add_or_choose_user
 install_basics
 start_network_service
-install_devops
+install_developtools
 install_tools
 install_productivity
 install_browsers
 # make_home_directories_for_user
-# polybar i3 fontconfig alacritty
-
-# wallpapers
-# xprofile
-# zsh
-# zprofile
